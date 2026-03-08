@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LeetCode API Test</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        h1 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px;
+            font-size: 16px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            margin-bottom: 15px;
+            box-sizing: border-box;
+        }
+
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 30px;
+            font-size: 16px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            width: 100%;
+            font-weight: bold;
+        }
+
+        button:hover {
+            opacity: 0.9;
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        #result {
+            margin-top: 20px;
+            padding: 20px;
+            background: #f5f5f5;
+            border-radius: 5px;
+            white-space: pre-wrap;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        .error {
+            color: #e74c3c;
+            background: #fee;
+            border-left: 4px solid #e74c3c;
+        }
+
+        .success {
+            color: #27ae60;
+            background: #efe;
+            border-left: 4px solid #27ae60;
+        }
+
+        .loading {
+            text-align: center;
+            color: #667eea;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 32px;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+
+        .stat-label {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>🚀 LeetCode API Test</h1>
+        <p class="subtitle">Test the LeetCode GraphQL API integration</p>
+
+        <input type="text" id="username" placeholder="Enter LeetCode username (e.g., tourist, Errichto)"
+            value="tourist">
+
+        <button onclick="testAPI()" id="testBtn">
+            Test API
+        </button>
+
+        <div id="result"></div>
+    </div>
+
+    <script>
+        const GRAPHQL_ENDPOINT = 'https://leetcode.com/graphql';
+
+        const USER_PROFILE_QUERY = `
+            query getUserProfile($username: String!) {
+                matchedUser(username: $username) {
+                    username
+                    profile {
+                        realName
+                        userAvatar
+                        ranking
+                        reputation
+                    }
+                    submitStats {
+                        acSubmissionNum {
+                            difficulty
+                            count
+                            submissions
+                        }
+                    }
+                    tagProblemCounts {
+                        advanced {
+                            tagName
+                            tagSlug
+                            problemsSolved
+                        }
+                        intermediate {
+                            tagName
+                            tagSlug
+                            problemsSolved
+                        }
+                        fundamental {
+                            tagName
+                            tagSlug
+                            problemsSolved
+                        }
+                    }
+                    userCalendar {
+                        streak
+                        totalActiveDays
+                        submissionCalendar
+                    }
+                }
+            }
+        `;
+
+        async function testAPI() {
+            const username = document.getElementById('username').value.trim();
+            const resultDiv = document.getElementById('result');
+            const testBtn = document.getElementById('testBtn');
+
+            if (!username) {
+                resultDiv.className = 'error';
+                resultDiv.textContent = 'Please enter a username';
+                return;
+            }
+
+            testBtn.disabled = true;
+            resultDiv.className = 'loading';
+            resultDiv.textContent = '⏳ Fetching data from LeetCode...';
+
+            try {
+                const response = await fetch(GRAPHQL_ENDPOINT, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Referer': 'https://leetcode.com',
+                    },
+                    body: JSON.stringify({
+                        query: USER_PROFILE_QUERY,
+                        variables: { username },
+                    }),
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+
+                if (data.errors) {
+                    throw new Error(data.errors[0].message);
+                }
+
+                if (!data.data?.matchedUser) {
+                    throw new Error('User not found');
+                }
+
+                const user = data.data.matchedUser;
+                displayResults(user);
+
+            } catch (error) {
+                resultDiv.className = 'error';
+                resultDiv.textContent = `❌ Error: ${error.message}`;
+            } finally {
+                testBtn.disabled = false;
+            }
+        }
+
+        function displayResults(user) {
+            const resultDiv = document.getElementById('result');
+            resultDiv.className = 'success';
+
+            const submitStats = user.submitStats.acSubmissionNum;
+            const allStats = submitStats.find(s => s.difficulty === 'All');
+            const easyStats = submitStats.find(s => s.difficulty === 'Easy');
+            const mediumStats = submitStats.find(s => s.difficulty === 'Medium');
+            const hardStats = submitStats.find(s => s.difficulty === 'Hard');
+
+            const topics = [
+                ...user.tagProblemCounts.fundamental,
+                ...user.tagProblemCounts.intermediate,
+                ...user.tagProblemCounts.advanced,
+            ]
+                .filter(t => t.problemsSolved > 0)
+                .sort((a, b) => b.problemsSolved - a.problemsSolved)
+                .slice(0, 5);
+
+            resultDiv.innerHTML = `
+                <h3>✅ Success! Profile Found</h3>
+                <p><strong>Username:</strong> ${user.username}</p>
+                <p><strong>Real Name:</strong> ${user.profile.realName || 'N/A'}</p>
+                <p><strong>Ranking:</strong> ${user.profile.ranking?.toLocaleString() || 'N/A'}</p>
+                <p><strong>Reputation:</strong> ${user.profile.reputation || 0}</p>
+                
+                <div class="stats">
+                    <div class="stat-card">
+                        <div class="stat-label">Total Solved</div>
+                        <div class="stat-value">${allStats?.count || 0}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Easy</div>
+                        <div class="stat-value">${easyStats?.count || 0}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Medium</div>
+                        <div class="stat-value">${mediumStats?.count || 0}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Hard</div>
+                        <div class="stat-value">${hardStats?.count || 0}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Streak</div>
+                        <div class="stat-value">${user.userCalendar.streak}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Active Days</div>
+                        <div class="stat-value">${user.userCalendar.totalActiveDays}</div>
+                    </div>
+                </div>
+                
+                <h4 style="margin-top: 20px;">Top 5 Topics:</h4>
+                <ul>
+                    ${topics.map(t => `<li><strong>${t.tagName}:</strong> ${t.problemsSolved} problems</li>`).join('')}
+                </ul>
+                
+                <p style="margin-top: 20px; color: #27ae60;">
+                    <strong>🎉 API is working correctly!</strong><br>
+                    You can now use this username in the CodeFlow AI app.
+                </p>
+            `;
+        }
+
+        // Allow Enter key to submit
+        document.getElementById('username').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                testAPI();
+            }
+        });
+    </script>
+</body>
+
+</html>
