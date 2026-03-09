@@ -31,7 +31,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       console.log('Logging in with username:', leetcode_username)
 
-      // Create mock profile data (LeetCode API has CORS in browser)
+      // Try backend API first (it will fetch real LeetCode data)
+      try {
+        const response = await api.login(leetcode_username, '', password)
+        if (response.user) {
+          setUser(response.user)
+          console.log('Login successful with backend API')
+          return
+        }
+      } catch (apiError: any) {
+        console.log('Backend API call failed, will use fallback:', apiError.message)
+      }
+
+      // Fallback: Create local user (backend will sync LeetCode data later)
       const localUser: User = {
         user_id: `user-${leetcode_username}`,
         leetcode_username: leetcode_username,
@@ -44,7 +56,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         localStorage.setItem('user', JSON.stringify(localUser))
       }
 
-      console.log('Login successful')
+      console.log('Login successful (local mode - backend will sync LeetCode data)')
     } catch (error) {
       console.error('Login failed:', error)
       throw error
@@ -55,7 +67,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       console.log('Registering user:', leetcode_username)
 
-      // Create local user
+      // Try backend API first (it will fetch and verify real LeetCode data)
+      try {
+        const response = await api.register(leetcode_username, email, password)
+        if (response.user) {
+          setUser(response.user)
+          console.log('Registration successful with backend API')
+          return
+        }
+      } catch (apiError: any) {
+        console.log('Backend API call failed, will use fallback:', apiError.message)
+      }
+
+      // Fallback: Create local user (backend will sync LeetCode data later)
       const localUser: User = {
         user_id: `user-${leetcode_username}`,
         leetcode_username: leetcode_username,
@@ -68,7 +92,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         localStorage.setItem('user', JSON.stringify(localUser))
       }
 
-      console.log('Registration successful')
+      console.log('Registration successful (local mode - backend will sync LeetCode data)')
     } catch (error) {
       console.error('Registration failed:', error)
       throw error

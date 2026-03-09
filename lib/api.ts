@@ -2,7 +2,7 @@
 // Handles all backend API communication
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://n8e9ghd13g.execute-api.ap-south-1.amazonaws.com/dev'
-const USE_MOCK_DATA = process.env.NEXT_PUBLIC_USE_MOCK_DATA === 'true' || true // Force mock data for demo
+const USE_MOCK_DATA = false // Use real LeetCode data
 
 // Types
 export interface User {
